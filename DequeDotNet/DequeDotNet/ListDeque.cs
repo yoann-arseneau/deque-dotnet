@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Threading;
 
 namespace DequeDotNet {
+	[DebuggerDisplay("Count = {Count}")]
+	[DebuggerTypeProxy(typeof(CollectionDebugView))]
 	public class ListDeque<T> : IDeque<T> {
 		public T this[int index] {
 			get {
@@ -26,9 +28,7 @@ namespace DequeDotNet {
 
 		public bool IsEmpty => count == 0;
 		public int Count => count;
-		public int Capacity => throw new NotImplementedException();
-
-		bool ICollection<T>.IsReadOnly => false;
+		public int Capacity => buffer.Length;
 
 		private T[] buffer;
 		private int count;
@@ -56,8 +56,8 @@ namespace DequeDotNet {
 			if (!EnsureCapacity(count + 1, 0)) {
 				Interlocked.Increment(ref version);
 				Array.Copy(buffer, 0, buffer, 1, count);
-				count += 1;
 			}
+			count += 1;
 			buffer[0] = item;
 		}
 		public void Insert(int index, T item) {
@@ -125,7 +125,7 @@ namespace DequeDotNet {
 			if (index < 0 || index >= count) {
 				throw new ArgumentOutOfRangeException(nameof(index));
 			}
-			Array.Copy(buffer, index, buffer, index + 1, count - index);
+			Array.Copy(buffer, index + 1, buffer, index, count - index - 1);
 			buffer[--count] = default;
 		}
 
@@ -168,7 +168,13 @@ namespace DequeDotNet {
 			}
 		}
 
+		bool ICollection<T>.IsReadOnly => false;
 		void ICollection<T>.Add(T item) => PushBack(item);
+
+		bool ICollection.IsSynchronized => false;
+		object ICollection.SyncRoot => this;
+		void ICollection.CopyTo(Array array, int index) => Array.Copy(buffer, 0, array, index, count);
+
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 	}
 }
